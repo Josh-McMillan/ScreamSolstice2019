@@ -16,9 +16,9 @@ public class Enemy : MonoBehaviour
     [SerializeField] private float spawnRadius = 50.0f;
 
     [SerializeField] private float playerFieldOfView = 45.0f;
+    [SerializeField] private LayerMask sightLayers;
 
     [SerializeField] private float minimumRespawnTime = 8.0f;
-
     [SerializeField] private float maximumRespawnTime = 16.0f;
 
     private EnemyState state = EnemyState.RESPAWNING;
@@ -26,8 +26,9 @@ public class Enemy : MonoBehaviour
     private Transform playerTransform;
     private Transform camTransform;
 
-    private NavMeshAgent agent;
-    private Animator animator;
+    private NavMeshAgent myAgent;
+    private Animator myAnimator;
+    private Collider myCollider;
 
     private bool hasHidden = false;
 
@@ -35,8 +36,9 @@ public class Enemy : MonoBehaviour
     {
         playerTransform = GameObject.FindGameObjectWithTag("Player").GetComponent<Transform>();
         camTransform = GameObject.FindGameObjectWithTag("MainCamera").GetComponent<Transform>();
-        agent = GetComponent<NavMeshAgent>();
-        animator = GetComponent<Animator>();
+        myAgent = GetComponent<NavMeshAgent>();
+        myAnimator = GetComponent<Animator>();
+        myCollider = GetComponent<Collider>();
     }
 
     private void Update()
@@ -65,7 +67,7 @@ public class Enemy : MonoBehaviour
 
     private void Respawn()
     {
-        agent.isStopped = true;
+        myAgent.isStopped = true;
 
         Vector3 spawnPosition = GeneratePosition();
 
@@ -89,15 +91,16 @@ public class Enemy : MonoBehaviour
             state = EnemyState.PURSUING;
         }
 
-        animator.SetTrigger("DissolveIn");
-        agent.isStopped = false;
+        myAnimator.SetTrigger("DissolveIn");
+        myAgent.isStopped = false;
+        myCollider.enabled = true;
     }
 
     private void ChasePlayer()
     {
-        if (!agent.pathPending)
+        if (!myAgent.pathPending)
         {
-            agent.SetDestination(playerTransform.position);
+            myAgent.SetDestination(playerTransform.position);
         }
 
         if (IsInPlayerSight())
@@ -111,8 +114,9 @@ public class Enemy : MonoBehaviour
         if (!hasHidden)
         {
             Debug.Log("HIDING FROM PLAYER!");
-            agent.isStopped = true;
-            animator.SetTrigger("DissolveOut");
+            myAgent.isStopped = true;
+            myAnimator.SetTrigger("DissolveOut");
+            myCollider.enabled = false;
             StartCoroutine(RespawnTimer());
             hasHidden = true;
         }
@@ -132,7 +136,7 @@ public class Enemy : MonoBehaviour
         Vector3 direction = transform.position - camTransform.position;
         float angle = Vector3.Angle(direction, camTransform.forward);
 
-        if (angle < playerFieldOfView * 0.5f)
+        if (angle < playerFieldOfView * 0.5f && !Physics.Linecast(transform.position + Vector3.up, playerTransform.position + Vector3.up, sightLayers))
         {
             return true;
         }
